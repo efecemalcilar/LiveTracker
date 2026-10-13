@@ -1,0 +1,1 @@
+RUN dotnet publish LiveTracker.Api/LiveTracker.Api.csproj -c Release -o /app
