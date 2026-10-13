@@ -1,0 +1,33 @@
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_DB: livetracker
+      POSTGRES_USER: livetracker
+      POSTGRES_PASSWORD: dev_password_only   # sadece geliþtirme için örnek deðer
+    ports:
+      - "5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U livetracker -d livetracker"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=livetracker;Username=livetracker;Password=dev_password_only"
+      Ingestion__FeedUrl: "https://api.entur.io/realtime/v1/gtfs-rt/vehicle-positions"
+      Ingestion__PollIntervalSeconds: "3"
+      Ingestion__ClientName: "adin-livetracker-case"
+      Retention__Window: "03:00:00"
+    ports:
+      - "8080:8080"
+
+volumes:
+  dbdata:
