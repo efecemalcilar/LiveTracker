@@ -1,23 +1,26 @@
+using LiveTracker.Application.Options;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.Services
+    .AddOptions<IngestionOptions>()
+    .Bind(builder.Configuration.GetSection(IngestionOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();   // hatalý yapýlandýrmada uygulama baþtan kalkmaz
+
+builder.Services
+    .AddOptions<RetentionOptions>()
+    .Bind(builder.Configuration.GetSection(RetentionOptions.SectionName))
+    .ValidateOnStart();
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseAuthorization();
-
+app.UseSwagger();
+app.UseSwaggerUI();
 app.MapControllers();
 
 app.Run();
