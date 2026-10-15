@@ -38,6 +38,9 @@ namespace LiveTracker.Infrastructure.Persistence.Migrations
                 table: "vehicle_positions",
                 columns: new[] { "vehicle_id", "recorded_at" },
                 descending: new[] { false, true });
+            migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS timescaledb;");
+            migrationBuilder.Sql(@"SELECT create_hypertable('vehicle_positions', 'recorded_at',
+                chunk_time_interval => INTERVAL '15 minutes', if_not_exists => TRUE);");
         }
 
         /// <inheritdoc />
