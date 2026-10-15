@@ -1,22 +1,38 @@
-﻿using LiveTracker.Infrastructure.Persistence;
+﻿using LiveTracker.Application.Abstraction;
+using LiveTracker.Application.Options;
+using LiveTracker.Infrastructure.Feed;
+using LiveTracker.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
+using Npgsql;
+using System.Net;
 
-namespace LiveTracker.Infrastructure
+namespace LiveTracker.Infrastructure;
+
+public static class DependencyInjection
 {
-    public static class DependencyInjection
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
-        public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
+        var connectionString = config.GetConnectionString("Default")!;
+
+        services.AddDbContext<LiveTrackerDbContext>(o => o.UseNpgsql(connectionString));
+        services.AddSingleton(_ => NpgsqlDataSource.Create(connectionString));
+        services.AddSingleton<IVehiclePositionStore, PostgresVehiclePositionStore>();
+
+        services.AddHttpClient<IVehiclePositionSource, GtfsRealtimeVehicleSource>((sp, client) =>
         {
-            services.AddDbContext<LiveTrackerDbContext>(o =>
-            o.UseNpgsql(config.GetConnectionString("Default")));
-            return services;
-        }
+            var o = sp.GetRequiredService<IOptions<IngestionOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(o.RequestTimeoutSeconds);
+            client.DefaultRequestHeaders.Add("ET-Client-Name", o.ClientName);
+        })
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5)   // uzun omurlu istemcide DNS yenilensin
+            });
+
+        return services;
     }
 }
