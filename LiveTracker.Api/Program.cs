@@ -1,9 +1,13 @@
+using LiveTracker.Api.Workers;
+using LiveTracker.Application;
 using LiveTracker.Application.Options;
 using LiveTracker.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddApplication();
+builder.Services.AddHostedService<IngestionWorker>();
 builder.Services
     .AddOptions<IngestionOptions>()
     .Bind(builder.Configuration.GetSection(IngestionOptions.SectionName))
