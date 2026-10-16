@@ -1,0 +1,80 @@
+﻿app-1  |       Executed DbCommand (37ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+app-1  |       SELECT EXISTS (
+app-1  |           SELECT 1 FROM pg_catalog.pg_class c
+app-1  |           JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+app-1  |           WHERE n.nspname='public' AND
+app-1  |                 c.relname='__EFMigrationsHistory'
+app-1  |       )
+app-1  | info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+app-1  |       Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+app-1  |       SELECT EXISTS (
+app-1  |           SELECT 1 FROM pg_catalog.pg_class c
+app-1  |           JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+app-1  |           WHERE n.nspname='public' AND
+app-1  |                 c.relname='__EFMigrationsHistory'
+app-1  |       )
+app-1  | info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+app-1  |       Executed DbCommand (11ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+app-1  |       CREATE TABLE "__EFMigrationsHistory" (
+app-1  |           "MigrationId" character varying(150) NOT NULL,
+app-1  |           "ProductVersion" character varying(32) NOT NULL,
+app-1  |           CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+app-1  |       );
+app-1  | info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+app-1  |       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+app-1  |       SELECT EXISTS (
+app-1  |           SELECT 1 FROM pg_catalog.pg_class c
+app-1  |           JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+app-1  |           WHERE n.nspname='public' AND
+app-1  |                 c.relname='__EFMigrationsHistory'
+app-1  |       )
+app-1  | info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+app-1  |       Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+app-1  |       SELECT "MigrationId", "ProductVersion"
+app-1  |       FROM "__EFMigrationsHistory"
+app-1  |       ORDER BY "MigrationId";
+app-1  | info: Microsoft.EntityFrameworkCore.Migrations[20402]
+app-1  |       Applying migration '20261015141238_InitialCreate'.
+app-1  | info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+app-1  |       Executed DbCommand (7ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+app-1  |       CREATE TABLE vehicle_positions (
+app-1  |           entity_id text NOT NULL,
+app-1  |           recorded_at timestamp with time zone NOT NULL,
+app-1  |           vehicle_id text NOT NULL,
+app-1  |           trip_id text,
+app-1  |           route_id text,
+app-1  |           latitude double precision NOT NULL,
+app-1  |           longitude double precision NOT NULL,
+app-1  |           bearing real,
+app-1  |           current_status smallint,
+app-1  |           stop_id text,
+app-1  |           occupancy_status smallint,
+app-1  |           ingested_at timestamp with time zone NOT NULL,
+app-1  |           CONSTRAINT "PK_vehicle_positions" PRIMARY KEY (entity_id, recorded_at)
+app-1  |       );
+app-1  | info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+app-1  |       Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+app-1  |       CREATE INDEX ix_vehicle_positions_vehicle_time ON vehicle_positions (vehicle_id, recorded_at DESC);
+app-1  | info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+app-1  |       Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+app-1  |       CREATE EXTENSION IF NOT EXISTS timescaledb;
+app-1  | info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+app-1  |       Executed DbCommand (5ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+app-1  |       SELECT create_hypertable('vehicle_positions', 'recorded_at',
+app-1  |                       chunk_time_interval => INTERVAL '15 minutes', if_not_exists => TRUE);
+app-1  | info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+app-1  |       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+app-1  |       INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+app-1  |       VALUES ('20261015141238_InitialCreate', '8.0.32');
+app-1  | warn: Microsoft.AspNetCore.Hosting.Diagnostics[15]
+app-1  |       Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'http://+:8080'.
+app-1  | info: Microsoft.Hosting.Lifetime[14]
+app-1  |       Now listening on: http://[::]:8080
+app-1  | info: Microsoft.Hosting.Lifetime[0]
+app-1  |       Application started. Press Ctrl+C to shut down.
+app-1  | info: Microsoft.Hosting.Lifetime[0]
+app-1  |       Hosting environment: Production
+app-1  | info: Microsoft.Hosting.Lifetime[0]
+app-1  |       Content root path: /app
+app-1  | info: Microsoft.Hosting.Lifetime[0]
+app-1  |       Application is shutting down...
