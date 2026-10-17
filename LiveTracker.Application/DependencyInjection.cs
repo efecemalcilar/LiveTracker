@@ -10,6 +10,7 @@ public static class DependencyInjection
     {
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<PositionChangeFilter>();
+        services.AddSingleton<PendingBatchBuffer>();
         services.AddSingleton<IngestionStatus>();
         services.AddSingleton<VehiclePositionIngestor>();
         services.AddSingleton<RetentionJob>();

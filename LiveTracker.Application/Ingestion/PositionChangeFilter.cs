@@ -45,10 +45,10 @@ namespace LiveTracker.Application.Ingestion
             return new FilterResult(fresh, unchanged, outOfOrder, tooOld, future);
         }
 
-        /// Yalnızca veritabanına başarıyla yazılan kayıtlar için çağrılır.
-        public void MarkWritten(IEnumerable<VehiclePosition> written)
+        /// Kuyruga alinan kayitlar icin cagrilir. Kayit kuyrukta durdugu icin ayni kayit tekrar secilmez.
+        public void MarkSeen(IEnumerable<VehiclePosition> accepted)
         {
-            foreach (var p in written) _lastSeen[p.EntityId] = p.RecordedAt;
+            foreach (var p in accepted) _lastSeen[p.EntityId] = p.RecordedAt;
         }
 
         /// Bellek sınırsız büyümesin diye pencerenin dışına çıkanları unut.

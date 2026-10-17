@@ -22,5 +22,9 @@ namespace LiveTracker.Application.Options
 
         [Required]
         public string ClientName { get; set; } = string.Empty;  // entur istemcilerden kendilerini tanıtan bir başlık bekliyor. (ET- Client Name)
+
+        /// Veritabani kapaliyken bellekte bekletilecek en fazla kayit sayisi.
+        [Range(1000, 5_000_000)]
+        public int MaxBufferedRows { get; set; } = 200_000;
     }
 }

@@ -11,6 +11,7 @@ public sealed class VehiclePositionIngestor
     private readonly IVehiclePositionSource _source;
     private readonly IVehiclePositionStore _store;
     private readonly PositionChangeFilter _filter;
+    private readonly PendingBatchBuffer _buffer;
     private readonly IngestionStatus _status;
     private readonly RetentionOptions _retention;
     private readonly TimeProvider _time;
@@ -20,6 +21,7 @@ public sealed class VehiclePositionIngestor
         IVehiclePositionSource source,
         IVehiclePositionStore store,
         PositionChangeFilter filter,
+        PendingBatchBuffer buffer,
         IngestionStatus status,
         IOptions<RetentionOptions> retention,
         TimeProvider time,
@@ -28,6 +30,7 @@ public sealed class VehiclePositionIngestor
         _source = source;
         _store = store;
         _filter = filter;
+        _buffer = buffer;
         _status = status;
         _retention = retention.Value;
         _time = time;
@@ -42,21 +45,45 @@ public sealed class VehiclePositionIngestor
         var now = _time.GetUtcNow().UtcDateTime;
         var result = _filter.Select(snapshot.Positions, now, _retention.Window);
 
-        var inserted = result.Fresh.Count > 0
-            ? await _store.SaveAsync(result.Fresh, ct)
-            : 0;
-
-        // Buraya yalnızca yazma basariliysa gelinir; hata olursa filtre guncellenmez
-        // ve ayni kayitlar bir sonraki turda yeniden denenir.
-        _filter.MarkWritten(result.Fresh);
+        // Once kuyruga koyuyoruz. Yazma hata verse bile kayitlar kuyrukta bekler
+        // ve filtre ayni kayitlari bir sonraki turda yeniden secmez.
+        _filter.MarkSeen(result.Fresh);
         _filter.Prune(now - _retention.Window);
+
+        var dropped = _buffer.Add(result.Fresh);
+        if (dropped > 0)
+            _logger.LogError("Kuyruk doldu, {Dropped} kayit atildi (veri kaybi)", dropped);
+
+        int inserted;
+        try
+        {
+            inserted = await FlushAsync(ct);
+        }
+        catch
+        {
+            _logger.LogWarning("Yazma basarisiz, {Pending} kayit kuyrukta bekliyor", _buffer.PendingRows);
+            throw;
+        }
+
         _status.RecordSuccess(now, inserted);
 
-        var level = result.Fresh.Count > 0 ? LogLevel.Information : LogLevel.Debug;
+        var level = result.Fresh.Count > 0 || inserted > 0 ? LogLevel.Information : LogLevel.Debug;
         _logger.Log(level,
-            "Okuma tamam: {Total} kayit, yeni {Fresh}, yazilan {Inserted}, ayni {Unchanged}, sirasiz {OutOfOrder}, eski {TooOld}, gelecek {Future}, gecersiz {Invalid}, {Elapsed} ms",
+            "Okuma tamam: {Total} kayit, yeni {Fresh}, yazilan {Inserted}, ayni {Unchanged}, sirasiz {OutOfOrder}, eski {TooOld}, gelecek {Future}, gecersiz {Invalid}, kuyrukta {Pending}, {Elapsed} ms",
             snapshot.Positions.Count, result.Fresh.Count, inserted, result.Unchanged,
             result.OutOfOrder, result.TooOld, result.FutureDated, snapshot.InvalidCount,
-            sw.ElapsedMilliseconds);
+            _buffer.PendingRows, sw.ElapsedMilliseconds);
+    }
+
+    // En eskiden baslayarak yazar. Biri basarisiz olursa kalanlar kuyrukta durur.
+    private async Task<int> FlushAsync(CancellationToken ct)
+    {
+        var inserted = 0;
+        while (_buffer.PeekOldest() is { } batch)
+        {
+            inserted += await _store.SaveAsync(batch, ct);
+            _buffer.RemoveOldest();
+        }
+        return inserted;
     }
 }
