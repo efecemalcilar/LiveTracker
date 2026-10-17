@@ -8,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
 builder.Services.AddHostedService<IngestionWorker>();
+builder.Services.AddHostedService<RetentionWorker>();
 builder.Services
     .AddOptions<IngestionOptions>()
     .Bind(builder.Configuration.GetSection(IngestionOptions.SectionName))

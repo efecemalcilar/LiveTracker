@@ -1,4 +1,5 @@
-﻿using LiveTracker.Application.Abstraction;
+﻿using LiveTracker.Application;
+using LiveTracker.Application.Abstraction;
 using LiveTracker.Application.Options;
 using LiveTracker.Infrastructure.Feed;
 using LiveTracker.Infrastructure.Persistence;
@@ -20,6 +21,7 @@ public static class DependencyInjection
         services.AddDbContext<LiveTrackerDbContext>(o => o.UseNpgsql(connectionString));
         services.AddSingleton(_ => NpgsqlDataSource.Create(connectionString));
         services.AddSingleton<IVehiclePositionStore, PostgresVehiclePositionStore>();
+        services.AddSingleton<IRetentionStore,PostgresRetentionStore>();
 
         services.AddHttpClient<IVehiclePositionSource, GtfsRealtimeVehicleSource>((sp, client) =>
         {
