@@ -1,0 +1,6 @@
+services:
+  app:
+    environment:
+      Retention__Window: "00:03:00"
+      Retention__ChunkInterval: "00:01:00"
+      Retention__CleanupInterval: "00:00:30"
