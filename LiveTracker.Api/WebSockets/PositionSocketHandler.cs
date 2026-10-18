@@ -7,6 +7,7 @@ namespace LiveTracker.Api.WebSockets;
 public sealed class PositionSocketHandler
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(10);
 
     private readonly PositionHub _hub;
     private readonly ILogger<PositionSocketHandler> _logger;
@@ -50,8 +51,7 @@ public sealed class PositionSocketHandler
         catch (Exception ex) when (ex is SlowConsumerException || ex.InnerException is SlowConsumerException)
         {
             _logger.LogWarning("Yavas istemci kapatildi");
-            await TryCloseAsync(socket, WebSocketCloseStatus.PolicyViolation,
-                "Yavas istemci. lastSeq ile tekrar baglanin.");
+            socket.Abort(); // okumayan istemci kapanış mesajına cevap vermez; bağlantıyı doğrudan kes
         }
         catch (WebSocketException)
         {
@@ -64,10 +64,20 @@ public sealed class PositionSocketHandler
         }
     }
 
-    private static Task SendAsync(WebSocket socket, StreamMessage message, CancellationToken ct)
+    // 10 saniyede gönderemezsek istemci okumuyor demektir
+    private static async Task SendAsync(WebSocket socket, StreamMessage message, CancellationToken ct)
     {
         var bytes = JsonSerializer.SerializeToUtf8Bytes(message, Json);
-        return socket.SendAsync(bytes, WebSocketMessageType.Text, true, ct);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(SendTimeout);
+        try
+        {
+            await socket.SendAsync(bytes, WebSocketMessageType.Text, true, timeout.Token);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new SlowConsumerException();
+        }
     }
 
     private static async Task WatchForCloseAsync(WebSocket socket, CancellationTokenSource cts)
@@ -83,15 +93,5 @@ public sealed class PositionSocketHandler
         }
         catch { /* iptal veya kopma: sorun değil */ }
         finally { cts.Cancel(); }
-    }
-
-    private static async Task TryCloseAsync(WebSocket socket, WebSocketCloseStatus status, string reason)
-    {
-        try
-        {
-            if (socket.State == WebSocketState.Open)
-                await socket.CloseAsync(status, reason, CancellationToken.None);
-        }
-        catch { }
     }
 }
