@@ -1,4 +1,5 @@
 using LiveTracker.Api.Workers;
+using LiveTracker.Api.WebSockets;
 using LiveTracker.Application;
 using LiveTracker.Application.Options;
 using LiveTracker.Infrastructure;
@@ -19,6 +20,13 @@ builder.Services
     .AddOptions<RetentionOptions>()
     .Bind(builder.Configuration.GetSection(RetentionOptions.SectionName))
     .ValidateOnStart();
+builder.Services
+    .AddOptions<StreamingOptions>()
+    .Bind(builder.Configuration.GetSection(StreamingOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<PositionSocketHandler>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -34,6 +42,8 @@ using (var scope = app.Services.CreateScope())
 
 app.UseSwagger();
 app.UseSwaggerUI();
+app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(30) });
+app.MapGet("/ws/positions", (HttpContext ctx, PositionSocketHandler handler) => handler.HandleAsync(ctx));
 app.MapControllers();
 
 app.Run();

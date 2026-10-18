@@ -3,6 +3,7 @@ using LiveTracker.Application.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
+using LiveTracker.Application.Streaming;
 
 namespace LiveTracker.Application.Ingestion;
 
@@ -16,12 +17,14 @@ public sealed class VehiclePositionIngestor
     private readonly RetentionOptions _retention;
     private readonly TimeProvider _time;
     private readonly ILogger<VehiclePositionIngestor> _logger;
+    private readonly PositionHub _hub;
 
     public VehiclePositionIngestor(
         IVehiclePositionSource source,
         IVehiclePositionStore store,
         PositionChangeFilter filter,
         PendingBatchBuffer buffer,
+        PositionHub hub,
         IngestionStatus status,
         IOptions<RetentionOptions> retention,
         TimeProvider time,
@@ -31,10 +34,12 @@ public sealed class VehiclePositionIngestor
         _store = store;
         _filter = filter;
         _buffer = buffer;
+        _hub = hub;
         _status = status;
         _retention = retention.Value;
         _time = time;
         _logger = logger;
+        
     }
 
     public async Task RunOnceAsync(CancellationToken ct)
@@ -83,6 +88,8 @@ public sealed class VehiclePositionIngestor
         {
             inserted += await _store.SaveAsync(batch, ct);
             _buffer.RemoveOldest();
+            _hub.Publish(batch);
+
         }
         return inserted;
     }

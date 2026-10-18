@@ -1,5 +1,6 @@
 ﻿using LiveTracker.Application.Ingestion;
 using LiveTracker.Application.Retention;
+using LiveTracker.Application.Streaming;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LiveTracker.Application;
@@ -14,6 +15,7 @@ public static class DependencyInjection
         services.AddSingleton<IngestionStatus>();
         services.AddSingleton<VehiclePositionIngestor>();
         services.AddSingleton<RetentionJob>();
+        services.AddSingleton<PositionHub>();
 
         return services;
     }
