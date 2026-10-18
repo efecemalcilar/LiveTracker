@@ -23,6 +23,12 @@ public sealed class PositionHub
     public long LastSeq { get { lock (_gate) return _seq; } }
     public int ClientCount { get { lock (_gate) return _subscribers.Count; } }
 
+    // Her aracın bilinen son konumu; notBefore'dan eski olanlar (artık görünmeyen araçlar) dışarıda kalır.
+    public IReadOnlyList<VehiclePosition> GetLatest(DateTime notBefore)
+    {
+        lock (_gate) return _latest.Values.Where(p => p.RecordedAt >= notBefore).ToList();
+    }
+
     // Yazılmış bir turu herkese yayınlar. Hiçbir zaman beklemez.
     public void Publish(IReadOnlyList<VehiclePosition> batch)
     {

@@ -29,6 +29,7 @@ builder.Services
 builder.Services.AddSingleton<PositionSocketHandler>();
 
 builder.Services.AddControllers();
+builder.Services.AddHealthChecks(); 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -45,5 +46,6 @@ app.UseSwaggerUI();
 app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(30) });
 app.MapGet("/ws/positions", (HttpContext ctx, PositionSocketHandler handler) => handler.HandleAsync(ctx));
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();

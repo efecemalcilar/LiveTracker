@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddSingleton(_ => NpgsqlDataSource.Create(connectionString));
         services.AddSingleton<IVehiclePositionStore, PostgresVehiclePositionStore>();
         services.AddSingleton<IRetentionStore,PostgresRetentionStore>();
+        services.AddScoped<IVehiclePositionQueries, PostgresVehiclePositionQueries>();
 
         services.AddHttpClient<IVehiclePositionSource, GtfsRealtimeVehicleSource>((sp, client) =>
         {

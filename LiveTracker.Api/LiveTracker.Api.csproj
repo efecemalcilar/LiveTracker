@@ -15,10 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\LiveTracker.Application\LiveTracker.Application.csproj" />
     <ProjectReference Include="..\LiveTracker.Infrastructure\LiveTracker.Infrastructure.csproj" />
   </ItemGroup>
