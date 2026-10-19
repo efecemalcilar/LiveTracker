@@ -2,6 +2,7 @@
 using LiveTracker.Application.Retention;
 using LiveTracker.Application.Streaming;
 using Microsoft.Extensions.DependencyInjection;
+using LiveTracker.Application.Queries;
 
 namespace LiveTracker.Application;
 
@@ -16,6 +17,7 @@ public static class DependencyInjection
         services.AddSingleton<VehiclePositionIngestor>();
         services.AddSingleton<RetentionJob>();
         services.AddSingleton<PositionHub>();
+        services.AddScoped<VehicleQueryService>(); // IVehiclepositionqueries e bağlı ve dbcontext kullandığı için istek başına yaşıyor. Singleton gibi tek örnekli bire servis istek başına yaşayan bir şeyi tutamaz.
 
         return services;
     }

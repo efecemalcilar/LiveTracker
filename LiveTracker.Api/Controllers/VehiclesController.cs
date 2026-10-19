@@ -1,10 +1,6 @@
-﻿using LiveTracker.Application.Abstraction;
-using LiveTracker.Application.Options;
-using LiveTracker.Application.Streaming;
+﻿using LiveTracker.Api.Contracts;
+using LiveTracker.Application.Queries;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using LiveTracker.Api.Contracts;
-// IVehiclePositionQueries için gereken using'i de ekle (IVehiclePositionStore ile aynı)
 
 namespace LiveTracker.Api.Controllers;
 
@@ -12,33 +8,24 @@ namespace LiveTracker.Api.Controllers;
 [Route("api/vehicles")]
 public sealed class VehiclesController : ControllerBase
 {
-    private readonly PositionHub _hub;
-    private readonly IVehiclePositionQueries _queries;
-    private readonly RetentionOptions _retention;
-    private readonly TimeProvider _time;
+    private readonly VehicleQueryService _service;
 
-    public VehiclesController(PositionHub hub, IVehiclePositionQueries queries,
-        IOptions<RetentionOptions> retention, TimeProvider time)
-    {
-        _hub = hub; _queries = queries; _retention = retention.Value; _time = time;
-    }
+    public VehiclesController(VehicleQueryService service) => _service = service;
 
     // Her aracın son bilinen konumu. İsteğe bağlı: ?routeId=...
     [HttpGet("latest")]
+    [ProducesResponseType(typeof(LatestVehiclesResponse), StatusCodes.Status200OK)]
     public IActionResult GetLatest([FromQuery] string? routeId)
     {
-        var notBefore = _time.GetUtcNow().UtcDateTime - _retention.Window;
-        var items = _hub.GetLatest(notBefore).AsEnumerable();
-        if (!string.IsNullOrEmpty(routeId))
-            items = items.Where(p => p.RouteId == routeId);
-
-        var list = items.ToList();
-        return Ok(new LatestVehiclesResponse(list.Count, list.Select(VehiclePositionDto.From).ToList()));
+        var vehicles = _service.GetLatest(routeId).Select(VehiclePositionDto.From).ToList();
+        return Ok(new LatestVehiclesResponse(vehicles.Count, vehicles));
     }
 
     // Bir aracın son 3 saatlik geçmişi, yeniden eskiye, sayfalı.
     // from (dahil) ve to (hariç) ile zaman aralığı seçilir; sonraki sayfa için nextBefore, before olarak verilir.
     [HttpGet("{vehicleId}/positions")]
+    [ProducesResponseType(typeof(PositionHistoryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetHistory(
         string vehicleId,
         [FromQuery] DateTimeOffset? from,
@@ -50,25 +37,11 @@ public sealed class VehiclesController : ControllerBase
         if (from is not null && to is not null && from >= to)
             return BadRequest("'from' must be earlier than 'to'.");
 
-        limit = Math.Clamp(limit, 1, 1000);
-        var floor = _time.GetUtcNow().UtcDateTime - _retention.Window;
-
-        // alt sınır: istenen 'from', ama saklama penceresinin dışına çıkamaz
-        var lower = from is not null && from.Value.UtcDateTime > floor ? from.Value.UtcDateTime : floor;
-
-        // üst sınır: 'to' ve 'before' değerlerinden küçük olanı
-        DateTime? upper = before?.UtcDateTime;
-        if (to is not null && (upper is null || to.Value.UtcDateTime < upper))
-            upper = to.Value.UtcDateTime;
-
-        // bir fazla isteriz: daha sayfa var mı diye anlamak için
-        var rows = await _queries.GetHistoryAsync(vehicleId, lower, upper, limit + 1, ct);
-
-        var hasMore = rows.Count > limit;
-        var page = rows.Take(limit).ToList();
-        DateTime? nextBefore = hasMore ? page[^1].RecordedAt : null;
+        var page = await _service.GetHistoryAsync(
+            vehicleId, from?.UtcDateTime, to?.UtcDateTime, before?.UtcDateTime, limit, ct);
 
         return Ok(new PositionHistoryResponse(
-    vehicleId, lower, upper, page.Count, nextBefore, page.Select(VehiclePositionDto.From).ToList()));
+            page.VehicleId, page.From, page.To, page.Items.Count, page.NextBefore,
+            page.Items.Select(VehiclePositionDto.From).ToList()));
     }
 }
