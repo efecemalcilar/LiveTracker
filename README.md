@@ -59,7 +59,7 @@ flowchart LR
 
 Bir okuma turu (3 saniyede bir):
 
-1. `GtfsRealtimeVehicleSource` Entur'dan protobuf indirir ve çözer (~2.800 kayıt).
+1. `GtfsRealtimeVehicleSource` Entur'dan protobuf indirir ve çözer (gece ~5.200, gündüz ~9.000 araç).
 2. `PositionChangeFilter` sadece değişenleri seçer (çok eski, gelecekteki, aynı ve sırası bozuk kayıtları eler).
 3. Seçilenler `PendingBatchBuffer` kuyruğuna alınır.
 4. Kuyruk, `PostgresVehiclePositionStore` ile tek sorguda toplu yazılır.
@@ -73,7 +73,7 @@ Kod yazmadan önce akışı bir gözlem aracıyla (`LiveTracker.FeedObserver`) s
 
 - **Kararlı anahtar `entity id`'dir.** `vehicle id` benzersiz değil; aynı değeri birden fazla kayıt taşıyabiliyor.
 - **Başlık zaman damgası güvenilmez.** 10 dakikada 26 kez geriye gitti. Bu yüzden "yeni mi?" kararını her kaydın kendi zamanıyla veriyorum.
-- **Okumaların çoğu tekrar.** Her turda ~2.800 kayıttan sadece 300–700'ü değişmiş. Hepsini yazmak diski boşuna doldururdu.
+- **Okumaların çoğu tekrar.** Her turda ~5.000–9.000 araçtan, yeni veri gelen turlarda bile sadece ~1.300–2.100'ü gerçekten yeni. Feed yaklaşık her 10 saniyede bir yenilendiği için aradaki turların çoğunda hiçbir şey değişmiyor.
 - **(0, 0) koordinatlar aralıklı gelebiliyor**; doğrulamada elenir.
 - Okuma süresi medyan ~200 ms (p95 ~400 ms), yanıt ~1,8 MB (gece ~1 MB). 3 saniyelik tur süresinin çok altında.
 
@@ -215,11 +215,11 @@ Ortam değişkeni ya da `appsettings.json` ile (ortam değişkeninde `:` yerine 
 | `Streaming:ReplayBatches` | 1200 | Tekrar gönderme belleği (tur) |
 | `Streaming:ClientQueueBatches` | 100 | İstemci başına kuyruk (tur) |
 
-Ayarlar açılışta doğrulanır; hatalı değer varsa uygulama başlamaz.
+Ingestion ve Streaming ayarları açılışta doğrulanır; hatalı değer varsa uygulama başlamaz.
 
 ## Testler
 
-`LiveTracker.Tests` (xUnit, 19 test): `PendingBatchBuffer` (sınır, en eskiyi atma), `PositionChangeFilter` (aynı/eski/gelecek/sırasız kayıt, `Prune`), `PositionHub` (snapshot, tekrar gönderme, yavaş istemci izolasyonu).
+`LiveTracker.Tests` (xUnit, 27 test): `PendingBatchBuffer` (sınır, en eskiyi atma), `PositionChangeFilter` (aynı/eski/gelecek/sırasız kayıt, `Prune`), `PositionHub` (snapshot, tekrar gönderme, yavaş istemci izolasyonu), `VehicleQueryService` (saklama penceresi kesişimi, sayfalama, limit sınırı, hat filtresi).
 
 ```bash
 dotnet test
