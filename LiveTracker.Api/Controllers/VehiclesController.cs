@@ -3,6 +3,7 @@ using LiveTracker.Application.Options;
 using LiveTracker.Application.Streaming;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using LiveTracker.Api.Contracts;
 // IVehiclePositionQueries için gereken using'i de ekle (IVehiclePositionStore ile aynı)
 
 namespace LiveTracker.Api.Controllers;
@@ -32,7 +33,7 @@ public sealed class VehiclesController : ControllerBase
             items = items.Where(p => p.RouteId == routeId);
 
         var list = items.ToList();
-        return Ok(new { count = list.Count, vehicles = list });
+        return Ok(new LatestVehiclesResponse(list.Count, list.Select(VehiclePositionDto.From).ToList()));
     }
 
     // Bir aracın son 3 saatlik geçmişi, yeniden eskiye, sayfalı.
@@ -67,6 +68,7 @@ public sealed class VehiclesController : ControllerBase
         var page = rows.Take(limit).ToList();
         DateTime? nextBefore = hasMore ? page[^1].RecordedAt : null;
 
-        return Ok(new { vehicleId, from = lower, to = upper, count = page.Count, nextBefore, positions = page });
+        return Ok(new PositionHistoryResponse(
+    vehicleId, lower, upper, page.Count, nextBefore, page.Select(VehiclePositionDto.From).ToList()));
     }
 }

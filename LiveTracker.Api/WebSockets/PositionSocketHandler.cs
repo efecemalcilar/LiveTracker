@@ -1,6 +1,7 @@
 ﻿using System.Net.WebSockets;
 using System.Text.Json;
 using LiveTracker.Application.Streaming;
+using LiveTracker.Api.Contracts;
 
 namespace LiveTracker.Api.WebSockets;
 
@@ -67,7 +68,8 @@ public sealed class PositionSocketHandler
     // 10 saniyede gönderemezsek istemci okumuyor demektir
     private static async Task SendAsync(WebSocket socket, StreamMessage message, CancellationToken ct)
     {
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(message, Json);
+        var dto = new StreamMessageDto(message.Type, message.Seq, message.Positions.Select(VehiclePositionDto.From).ToList());
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(dto, Json);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(SendTimeout);
         try
