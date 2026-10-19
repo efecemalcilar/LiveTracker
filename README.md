@@ -225,12 +225,19 @@ Ingestion ve Streaming ayarları açılışta doğrulanır; hatalı değer varsa
 dotnet test
 ```
 
-## Bilinen eksikler ve daha fazla zamanım olsaydı
+## Bilinen eksikler ve sonraki adımlar
 
-- Disk tabanlı kuyruk (uygulama kapanınca kayıpsız).
-- Kimlik doğrulama (JWT) ve istemci başına yetkilendirme.
-- OpenTelemetry ile metrik ve izleme; şimdilik log ve `/api/status`.
-- Yük testi ve birden fazla uygulama örneği (şu an tek örnek; hub bellekte).
-- WebSocket'te bölge/hat filtreleme.
-- Eski chunk'lar için TimescaleDB sıkıştırması.
-- `timescale/timescaledb:latest-pg16` imajının sürümü üretimde sabitlenmeli.
+Zorunlu akışı (araç takibi) derinlemesine ele aldım: veri kaybı, saklama ve silme, WebSocket dayanıklılığı. Aşağıdakileri bilerek kapsam dışı bıraktım.
+
+| Eksik | Neden yapılmadı | Nasıl yapılırdı |
+| --- | --- | --- |
+| Disk tabanlı kuyruk | Bellek kuyruğu DB kesintisini karşılıyor; yalnız uygulama kapanırsa içindekiler kaybolur | Yerel dosya ya da "outbox" tablosu |
+| Birden fazla uygulama kopyası | Hub ve kuyruk bellekte; iki kopya iki kez toplar | Tek toplayıcı seçimi (PostgreSQL advisory lock) ve hub için Redis pub/sub. `ON CONFLICT` çift yazımı zaten engelliyor |
+| Trip updates ve alerts akışları | Bonus; zorunlu akışı sağlam yapmayı seçtim | Aynı "kaynak interface'i + depo" kalıbıyla ayrı sağlayıcılar |
+| JWT ile koruma | Bu görevin zorunlu kapsamında değil | Controller ve WebSocket için bearer token doğrulaması |
+| OpenTelemetry/Prometheus | Log ve `/api/status` ile yetindim | Tur süresi ve yazılan satır metrikleri |
+| Yük testi, Testcontainers | Gerçek veriyle ölçüm yaptım; çok istemcili WebSocket yük testi yok | k6 / NBomber ve gerçek Timescale container'ıyla entegrasyon testi |
+| WebSocket'te hat/araç aboneliği | Bonus | Hub'da `routeId` filtreli kanal |
+| Eski chunk sıkıştırma | 3 saatlik pencerede gerekmiyor; 10 gün için düşünülür | TimescaleDB sıkıştırma politikası |
+| Retention ayarlarında doğrulama yok | Ingestion ve Streaming'de var, Retention'da eklemedim | `.Validate(...)` ile süreler > 0 kontrolü |
+| Docker imaj sürümü | `latest-pg16` kullanıyorum | Üretimde belirli bir sürüme sabitlenmeli |
