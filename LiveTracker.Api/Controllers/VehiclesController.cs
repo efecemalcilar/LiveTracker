@@ -36,23 +36,37 @@ public sealed class VehiclesController : ControllerBase
     }
 
     // Bir aracın son 3 saatlik geçmişi, yeniden eskiye, sayfalı.
-    // Sonraki sayfa: önceki cevaptaki nextBefore değeri ?before= olarak verilir.
+    // from (dahil) ve to (hariç) ile zaman aralığı seçilir; sonraki sayfa için nextBefore, before olarak verilir.
     [HttpGet("{vehicleId}/positions")]
     public async Task<IActionResult> GetHistory(
-        string vehicleId, [FromQuery] DateTimeOffset? before, [FromQuery] int limit = 100,
+        string vehicleId,
+        [FromQuery] DateTimeOffset? from,
+        [FromQuery] DateTimeOffset? to,
+        [FromQuery] DateTimeOffset? before,
+        [FromQuery] int limit = 100,
         CancellationToken ct = default)
     {
+        if (from is not null && to is not null && from >= to)
+            return BadRequest("'from' must be earlier than 'to'.");
+
         limit = Math.Clamp(limit, 1, 1000);
-        var notBefore = _time.GetUtcNow().UtcDateTime - _retention.Window;
+        var floor = _time.GetUtcNow().UtcDateTime - _retention.Window;
+
+        // alt sınır: istenen 'from', ama saklama penceresinin dışına çıkamaz
+        var lower = from is not null && from.Value.UtcDateTime > floor ? from.Value.UtcDateTime : floor;
+
+        // üst sınır: 'to' ve 'before' değerlerinden küçük olanı
+        DateTime? upper = before?.UtcDateTime;
+        if (to is not null && (upper is null || to.Value.UtcDateTime < upper))
+            upper = to.Value.UtcDateTime;
 
         // bir fazla isteriz: daha sayfa var mı diye anlamak için
-        var rows = await _queries.GetHistoryAsync(
-            vehicleId, notBefore, before?.UtcDateTime, limit + 1, ct);
+        var rows = await _queries.GetHistoryAsync(vehicleId, lower, upper, limit + 1, ct);
 
         var hasMore = rows.Count > limit;
         var page = rows.Take(limit).ToList();
         DateTime? nextBefore = hasMore ? page[^1].RecordedAt : null;
 
-        return Ok(new { vehicleId, count = page.Count, nextBefore, positions = page });
+        return Ok(new { vehicleId, from = lower, to = upper, count = page.Count, nextBefore, positions = page });
     }
 }
