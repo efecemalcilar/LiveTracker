@@ -104,7 +104,7 @@ CREATE INDEX ix_vehicle_positions_vehicle_time
        ON vehicle_positions (vehicle_id, recorded_at DESC);
 ```
 
-- **Birincil anahtar** `(entity_id, recorded_at)`: aynı kayıt iki kez gelirse ikinci yazım sessizce atlanır (`ON CONFLICT DO NOTHING`). Hypertable bölme sütununun anahtarda bulunması gerektiği için `recorded_at` da anahtarda.
+- **Primary Key** `(entity_id, recorded_at)`: aynı kayıt iki kez gelirse ikinci yazım sessizce atlanır (`ON CONFLICT DO NOTHING`). Hypertable bölme sütununun anahtarda bulunması gerektiği için `recorded_at` da anahtarda.
 - **İndeks** `(vehicle_id, recorded_at DESC)`: bir aracın geçmişi sorgusu tabloyu taramadan bu indeksle çalışır.
 - **Toplu yazma:** Her tur tek bir `INSERT ... SELECT * FROM unnest(...)` ile yazılır; kayıt başına gidiş yok.
 
@@ -150,8 +150,8 @@ Dört temel senaryo. Her biri için: ne kaybolur, ne korunur, neden.
 | Senaryo | Ne kaybolur | Ne korunur | Neden / nasıl |
 | --- | --- | --- | --- |
 | **Kaynak (Entur) erişilemez ya da bozuk yanıt verir** | Erişilemeyen süredeki konumlar geri alınamaz; Entur geçmiş sunmuyor. | Önceden yazılmış her şey. Uygulama çökmez, kendiliğinden toparlanır. | Okuma hatası yakalanır, `/api/status` içinde `degraded` olur ve `failedAttempts` artar; döngü her 3 saniyede yeniden dener. |
-| **Veritabanı erişilemez** | Kuyruk dolarsa (200.000 satır ≈ 30 dk) en eski satırlar atılır ve hata loglanır. | Kesintiden önce yazılanlar; kesinti kısa sürerse hiçbir şey kaybolmaz. | Yazılamayan tur sınırlı bellek kuyruğunda bekler; veritabanı dönünce en eskiden başlayarak yazılır. |
-| **Uygulama yeniden başlar / çöker** | Bellekteki yazılmamış kuyruk ve kapalı kalınan sürede kaçan okumalar. Normal işleyişte kuyruk boştur (her tur hemen yazılır), yani pratikte birkaç saniye. | Veritabanındaki tüm veri; çift kayıt oluşmaz. | Açılışta "gördüm" listesi boştur, ilk tur her aracı yeniden gönderir ama birincil anahtar + `ON CONFLICT DO NOTHING` bunları eler. |
+| **Veritabanı erişilemez** | Kuyruk dolarsa (yoğun saatte ≈ 11 dk, akşam hızında ≈ 35 dk) en eski satırlar atılır ve hata loglanır. | Kesintiden önce yazılanlar; kesinti kısa sürerse hiçbir şey kaybolmaz. | Yazılamayan tur sınırlı bellek kuyruğunda bekler; veritabanı dönünce en eskiden başlayarak yazılır. |
+| **Uygulama yeniden başlar / çöker** | Bellekteki yazılmamış kuyruk ve kapalı kalınan sürede kaçan okumalar. Normal işleyişte kuyruk boştur (her tur hemen yazılır), yani pratikte birkaç saniye. | Veritabanındaki tüm veri; çift kayıt oluşmaz. | Açılışta "gördüm" listesi boştur, ilk tur her aracı yeniden gönderir ama Primary Key + `ON CONFLICT DO NOTHING` bunları eler. |
 | **WebSocket istemcisi kopar ya da yavaşlar** | Hiçbir kalıcı veri kaybolmaz. İstemci kapatılırsa o anki yayını kaçırır. | Veritabanı ve diğer istemciler. İstemci `lastSeq` ile kaçırdığını geri alır. | İstemci başına sınırlı kuyruk; dolarsa ya da 10 sn'de mesaj alamazsa istemci kapatılır, yayıncı beklemez. |
 
 Ek önlemler: aynı veri iki kez gelirse zararsız; bozuk kayıt sayılır (`gecersiz`) ve elenir, tur düşmez.
