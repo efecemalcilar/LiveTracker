@@ -171,11 +171,12 @@ Ek önlemler: aynı veri iki kez gelirse zararsız; bozuk kayıt sayılır (`gec
 
 ## WebSocket
 
-Adres: `ws://localhost:8080/ws/positions?lastSeq=<son alınan seq>`
+Adres: `ws://localhost:8080/ws/positions?lastSeq=<son alınan seq>&routeId=<hat>` (ikisi de isteğe bağlı)
 
 - Yeni bağlanan önce `snapshot` (her aracın son konumu), sonra yaklaşık 3 saniyede bir `update` alır.
 - Her mesaj `{"type": "snapshot" | "update", "seq": N, "positions": [...]}` biçimindedir; `seq` her tura verilen artan numaradır.
 - Bağlantısı kopan istemci son `seq`'ini `lastSeq` ile verirse kaçırdığı turlar sırayla tekrar gönderilir (son 1200 tur ≈ 1 saat bellekte tutulur). Numara çok eskiyse ya da uygulama yeniden başlamışsa snapshot verilir (`seq` uygulama açılışında Unix zamanından başlar, bu yüzden eski numara yeni sayaçla karışmaz).
+- **Hat aboneliği:** `routeId` verilirse (örneğin `?routeId=ATB:Line:2_810`) snapshot, `update` mesajları ve tekrar gönderilen turlar sadece o hattın konumlarını içerir; o hatta yeni kayıt yoksa istemciye mesaj gitmez. `seq` global kaldığı için hat aboneliğinde numaralar atlayabilir, `lastSeq` yine "bundan sonrakileri ver" anlamında çalışır.
 - **Yavaş istemci izolasyonu:** Her istemcinin sınırlı bir kuyruğu var (`Streaming:ClientQueueBatches`, varsayılan 100 tur). Kuyruğu dolan ya da 10 saniyede mesaj alamayan istemci kapatılır; yayıncı hiçbir zaman beklemez, diğer istemciler etkilenmez. İstemci `lastSeq` ile geri dönebilir.
 - Yayın, veri veritabanına yazıldıktan sonra yapılır; WebSocket'ten görülen her veri kalıcıdır.
 
@@ -237,7 +238,6 @@ Zorunlu akışı (araç takibi) derinlemesine ele aldım: veri kaybı, saklama v
 | JWT ile koruma | Bu görevin zorunlu kapsamında değil | Controller ve WebSocket için bearer token doğrulaması |
 | OpenTelemetry/Prometheus | Log ve `/api/status` ile yetindim | Tur süresi ve yazılan satır metrikleri |
 | Yük testi, Testcontainers | Gerçek veriyle ölçüm yaptım; çok istemcili WebSocket yük testi yok | k6 / NBomber ve gerçek Timescale container'ıyla entegrasyon testi |
-| WebSocket'te hat/araç aboneliği | Bonus | Hub'da `routeId` filtreli kanal |
 | Eski chunk sıkıştırma | 3 saatlik pencerede gerekmiyor; 10 gün için düşünülür | TimescaleDB sıkıştırma politikası |
 | Retention ayarlarında doğrulama yok | Ingestion ve Streaming'de var, Retention'da eklemedim | `.Validate(...)` ile süreler > 0 kontrolü |
 | Docker imaj sürümü | `latest-pg16` kullanıyorum | Üretimde belirli bir sürüme sabitlenmeli |
