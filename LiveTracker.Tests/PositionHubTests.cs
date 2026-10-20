@@ -1,6 +1,7 @@
 ﻿using LiveTracker.Application.Options;
 using LiveTracker.Application.Streaming;
 using Microsoft.Extensions.Options;
+using LiveTracker.Domain;
 using Xunit;
 
 namespace LiveTracker.Tests;
@@ -13,6 +14,66 @@ public class PositionHubTests
 
     private static IReadOnlyList<LiveTracker.Domain.VehiclePosition> One(string id) =>
         new[] { TestData.Position(id, TestData.Now) };
+
+    // Belirli bir hatta ait örnek konum
+    private static VehiclePosition OnRoute(string id, string route)
+    {
+        var p = TestData.Position(id, TestData.Now);
+        p.RouteId = route;
+        return p;
+    }
+
+    [Fact]
+    public void Subscribe_WithRouteId_SnapshotContainsOnlyThatRoute()
+    {
+        var hub = Create();
+        hub.Publish(new[] { OnRoute("a", "r1"), OnRoute("b", "r2") });
+
+        using var sub = hub.Subscribe(null, "r1");
+
+        var message = Assert.Single(sub.Initial);
+        Assert.Equal("snapshot", message.Type);
+        Assert.Equal("a", Assert.Single(message.Positions).EntityId);
+    }
+
+    [Fact]
+    public void Publish_SendsRouteSubscriberOnlyItsOwnPositions()
+    {
+        var hub = Create();
+        using var sub = hub.Subscribe(null, "r1");
+
+        hub.Publish(new[] { OnRoute("a", "r1"), OnRoute("b", "r2") });
+
+        Assert.True(sub.Reader.TryRead(out var message));
+        Assert.Equal("a", Assert.Single(message.Positions).EntityId);
+    }
+
+    [Fact]
+    public void Publish_WithNoMatchingRoute_SendsNothing()
+    {
+        var hub = Create();
+        using var sub = hub.Subscribe(null, "r1");
+
+        hub.Publish(new[] { OnRoute("b", "r2") });
+
+        Assert.False(sub.Reader.TryRead(out _));
+    }
+
+    [Fact]
+    public void Replay_WithRouteId_FiltersMissedBatches()
+    {
+        var hub = Create();
+        hub.Publish(new[] { OnRoute("a", "r1") });
+        var seqAfterFirst = hub.LastSeq;
+        hub.Publish(new[] { OnRoute("b", "r2") });
+        hub.Publish(new[] { OnRoute("c", "r1") });
+
+        using var sub = hub.Subscribe(seqAfterFirst, "r1");
+
+        var message = Assert.Single(sub.Initial);
+        Assert.Equal("update", message.Type);
+        Assert.Equal("c", Assert.Single(message.Positions).EntityId);
+    }
 
     [Fact]
     public void Subscribe_WithoutLastSeq_GetsSnapshotOfLatestPositions()
