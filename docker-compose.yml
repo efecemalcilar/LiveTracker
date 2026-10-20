@@ -24,7 +24,7 @@ services:
       ConnectionStrings__Default: "Host=db;Port=5432;Database=livetracker;Username=livetracker;Password=dev_password_only"
       Ingestion__FeedUrl: "https://api.entur.io/realtime/v1/gtfs-rt/vehicle-positions"
       Ingestion__PollIntervalSeconds: "3"
-      Ingestion__ClientName: "adin-livetracker-case"
+      Ingestion__ClientName: "efe-livetracker-case"
       Retention__Window: "03:00:00"
     ports:
       - "8080:8080"

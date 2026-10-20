@@ -2,7 +2,6 @@
 using LiveTracker.Application.Ingestion;
 using LiveTracker.Application.Streaming;
 using Microsoft.AspNetCore.Mvc;
-// IVehiclePositionQueries için gereken using'i de ekle
 
 namespace LiveTracker.Api.Controllers;
 
