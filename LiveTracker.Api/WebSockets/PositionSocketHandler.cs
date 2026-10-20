@@ -19,7 +19,8 @@ public sealed class PositionSocketHandler
         _logger = logger;
     }
 
-    // /ws/positions?lastSeq=123  -> lastSeq verilirse kaçırılanlar tekrar gönderilir
+    // /ws/positions?lastSeq=123&routeId=BRA:Line:4_6014
+    // lastSeq verilirse kaçırılanlar tekrar gönderilir, routeId verilirse sadece o hat gelir.
     public async Task HandleAsync(HttpContext ctx)
     {
         if (!ctx.WebSockets.IsWebSocketRequest)
@@ -29,9 +30,11 @@ public sealed class PositionSocketHandler
         }
 
         long? lastSeq = long.TryParse(ctx.Request.Query["lastSeq"], out var s) ? s : null;
+        string? routeId = ctx.Request.Query["routeId"];
+        if (string.IsNullOrWhiteSpace(routeId)) routeId = null;
 
         using var socket = await ctx.WebSockets.AcceptWebSocketAsync();
-        using var subscription = _hub.Subscribe(lastSeq);
+        using var subscription = _hub.Subscribe(lastSeq, routeId);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted);
 
         // İstemci kapatırsa haberdar olmak için sürekli okuyan bir görev
