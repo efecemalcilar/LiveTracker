@@ -2,7 +2,7 @@
 
 Entur'un (Norveç) GTFS-Realtime araç konumu akışını 3 saniyede bir okuyan, değişen konumları PostgreSQL + TimescaleDB'ye yazan, son 3 saati tutup eskisini otomatik silen ve sonucu WebSocket ve REST ile sunan bir ASP.NET Core 8 servisidir.
 
-Video anlatımı: [VIDEO_LINKI_BURAYA](VIDEO_LINKI_BURAYA)
+Video anlatımı: [VIDEO_LINKI_BURAYA](https://youtu.be/m2_Oo4mICqI)
 
 ## Hızlı başlangıç
 
